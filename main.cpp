@@ -3,16 +3,14 @@
 
 static float speed = 50;
 static float speedMod = 240.0f;
-float squareSize = 50;
-float centerX = ((GetScreenWidth() - squareSize) / 2.0);
-float centerY = ((GetScreenHeight() - squareSize) / 2.0);
+float squareSize = 20;
 static int offsetX = 0;
 static int offsetY = 0;
 
 void sprintBoost(void) {
-  if (IsKeyDown(KEY_RIGHT_SHIFT))
+  if (IsKeyDown(KEY_SPACE))
     speed = 2 * speedMod * GetFrameTime();
-  if (IsKeyUp(KEY_RIGHT_SHIFT))
+  if (IsKeyUp(KEY_SPACE))
     speed = speedMod * GetFrameTime();
 }
 
@@ -37,21 +35,47 @@ public:
   Vector2 center;
   float radius;
   Color color;
+  float velocity;
 
-  Circle(Vector2 pos, float r, Color c) : center(pos), radius(r), color(c) {}
+  Circle(Vector2 pos, float r, Color c, float vel)
+      : center(pos), radius(r), color(c), velocity(vel) {}
 
   void Draw() const { DrawCircleV(center, radius, color); }
+
+  void Update(void) { center.y += velocity * GetFrameTime(); }
+
+  bool reachedBottom(void) const {
+    return center.y - radius > GetScreenHeight();
+  }
+
+  void Respawn() {
+    center.y = -GetScreenHeight() + 250;
+    center.x = GetRandomValue(0, GetScreenWidth());
+  }
 };
 
 int main() {
   InitWindow(800, 450, "raylib");
+
+  float centerX = ((GetScreenWidth() - squareSize) / 2.0);
+  float centerY = ((GetScreenHeight() - squareSize) / 2.0);
+
   SetTargetFPS(60);
 
   std::vector<Circle> circles;
 
-  for (int i = 1; i <= 10; i++) {
-    float x = 60 + i * 70;
-    circles.push_back(Circle({x, 200}, 30, PINK));
+  for (int i = 1; i <= 25; i++) {
+    float x = GetRandomValue(0, GetScreenWidth());
+    float y = -GetScreenHeight();
+    float velocity = GetRandomValue(50, 300);
+    circles.push_back(Circle({x, y}, 20, PINK, velocity));
+  }
+
+  for (int i = 1; i <= 25; i++) {
+    float x = GetRandomValue(0, GetScreenWidth());
+    float y = -GetScreenHeight() + 250;
+    float velocity = GetRandomValue(50, 400);
+    circles.push_back(Circle({x, y}, GetRandomValue(10, 50), RED, velocity));
   }
 
   while (!WindowShouldClose()) {
@@ -63,10 +87,15 @@ int main() {
 
     WASD_movement();
 
-    DrawRectangleRec(square, BLACK);
-    for (const Circle &c : circles) {
+    for (Circle &c : circles) {
+      c.Update();
+      if (c.reachedBottom())
+        c.Respawn();
       c.Draw();
     }
+
+    DrawRectangleRec(square, BLACK);
+
     EndDrawing();
   }
 
