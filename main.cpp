@@ -56,6 +56,9 @@ public:
 
 int main() {
   InitWindow(800, 450, "raylib");
+  InitAudioDevice();
+  SetMasterVolume(1);
+  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.mp3");
 
   float centerX = ((GetScreenWidth() - squareSize) / 2.0);
   float centerY = ((GetScreenHeight() - squareSize) / 2.0);
@@ -92,6 +95,10 @@ int main() {
       if (c.reachedBottom())
         c.Respawn();
       c.Draw();
+      if (CheckCollisionCircleRec(c.center, c.radius, square)) {
+        PlaySound(bubblePop);
+        c.Respawn();
+      }
     }
 
     DrawRectangleRec(square, BLACK);
@@ -99,6 +106,8 @@ int main() {
     EndDrawing();
   }
 
+  UnloadSound(bubblePop);
+  CloseAudioDevice();
   CloseWindow();
   return 0;
 }
