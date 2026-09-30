@@ -34,11 +34,20 @@ class Circle {
 public:
   Vector2 center;
   float radius;
+  float collisionRadius;
   Color color;
   float velocity;
+  bool isEnemy;
 
-  Circle(Vector2 pos, float r, Color c, float vel)
-      : center(pos), radius(r), color(c), velocity(vel) {}
+  Circle(Vector2 pos, float r, Color c, float vel, bool enemy)
+      : center(pos), radius(r), color(c), velocity(vel), isEnemy(enemy) {
+
+    if (isEnemy) {
+      collisionRadius = r - 10.f;
+    } else {
+      collisionRadius = r;
+    }
+  }
 
   void Draw() const { DrawCircleV(center, radius, color); }
 
@@ -55,10 +64,12 @@ public:
 };
 
 int main() {
-  InitWindow(800, 450, "raylib");
+  InitWindow(800, 800, "raylib");
   InitAudioDevice();
   SetMasterVolume(1);
-  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.mp3");
+  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
+  Image kandyImg = LoadImage("kandy.png");
+  Texture kandy = LoadTextureFromImage(kandyImg);
 
   float centerX = ((GetScreenWidth() - squareSize) / 2.0);
   float centerY = ((GetScreenHeight() - squareSize) / 2.0);
@@ -67,18 +78,19 @@ int main() {
 
   std::vector<Circle> circles;
 
-  for (int i = 1; i <= 25; i++) {
+  for (int i = 1; i <= 75; i++) {
     float x = GetRandomValue(0, GetScreenWidth());
     float y = -GetScreenHeight();
     float velocity = GetRandomValue(50, 300);
-    circles.push_back(Circle({x, y}, 20, PINK, velocity));
+    circles.push_back(Circle({x, y}, 15, PINK, velocity, false));
   }
 
   for (int i = 1; i <= 25; i++) {
     float x = GetRandomValue(0, GetScreenWidth());
     float y = -GetScreenHeight() + 250;
     float velocity = GetRandomValue(50, 400);
-    circles.push_back(Circle({x, y}, GetRandomValue(10, 50), RED, velocity));
+    circles.push_back(
+        Circle({x, y}, GetRandomValue(10, 50), RED, velocity, true));
   }
 
   while (!WindowShouldClose()) {
@@ -95,7 +107,16 @@ int main() {
       if (c.reachedBottom())
         c.Respawn();
       c.Draw();
-      if (CheckCollisionCircleRec(c.center, c.radius, square)) {
+
+      if (c.isEnemy)
+        DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
+                      c.radius / kandy.width * 2, RED);
+
+      if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
+          c.isEnemy) {
+        CloseWindow();
+        return 0;
+      } else if (CheckCollisionCircleRec(c.center, c.collisionRadius, square)) {
         PlaySound(bubblePop);
         c.Respawn();
       }
@@ -107,6 +128,8 @@ int main() {
   }
 
   UnloadSound(bubblePop);
+  UnloadImage(kandyImg);
+  UnloadTexture(kandy);
   CloseAudioDevice();
   CloseWindow();
   return 0;
