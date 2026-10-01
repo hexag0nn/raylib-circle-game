@@ -1,35 +1,49 @@
+#include <cmath>
 #include <raylib.h>
 #include <string>
 #include <vector>
 
-static float speed = 50;
-static float speedMod = 240.0f;
+static float speed = 500.f;
+// static float speedMod = 2.0f;
 float squareSize = 20;
-static int offsetX = 0;
-static int offsetY = 0;
+static float offsetX = 0;
+static float offsetY = 0;
 static int score = 0;
 
 void sprintBoost(void) {
   if (IsKeyDown(KEY_SPACE))
-    speed = 2 * speedMod * GetFrameTime();
+    speed = 750.f;
   if (IsKeyUp(KEY_SPACE))
-    speed = speedMod * GetFrameTime();
+    speed = 500.f;
 }
 
 void WASD_movement(void) {
   sprintBoost();
-  if (IsKeyDown(KEY_W)) {
-    offsetY -= speed;
+
+  float moveX = 0.f;
+  float moveY = 0.f;
+
+  if (IsKeyDown(KEY_W))
+    moveY -= 1.0f;
+
+  if (IsKeyDown(KEY_A))
+    moveX -= 1.0f;
+
+  if (IsKeyDown(KEY_S))
+    moveY += 1.0f;
+
+  if (IsKeyDown(KEY_D))
+    moveX += 1.0f;
+
+  float length = sqrtf(pow(moveX, 2) + pow(moveY, 2));
+
+  if (length > 1.0f) {
+    moveX /= length;
+    moveY /= length;
   }
-  if (IsKeyDown(KEY_A)) {
-    offsetX -= speed;
-  }
-  if (IsKeyDown(KEY_S)) {
-    offsetY += speed;
-  }
-  if (IsKeyDown(KEY_D)) {
-    offsetX += speed;
-  }
+
+  offsetX += moveX * speed * GetFrameTime();
+  offsetY += moveY * speed * GetFrameTime();
 }
 
 class Circle {
@@ -97,35 +111,33 @@ int main() {
         Circle({x, y}, GetRandomValue(10, 50), RED, velocity, true));
   }
 
-  while (!WindowShouldClose()) {
-    BeginDrawing();
-    ClearBackground(WHITE);
+  bool isGameOver = false;
 
+  while (!WindowShouldClose()) {
     Rectangle square = {centerX + offsetX, centerY + offsetY, squareSize,
                         squareSize};
+    if (!isGameOver) {
+      WASD_movement();
 
-    WASD_movement();
+      for (Circle &c : circles) {
+        c.Update();
+        if (c.reachedBottom())
+          c.Respawn();
 
-    for (Circle &c : circles) {
-      c.Update();
-      if (c.reachedBottom())
-        c.Respawn();
-      c.Draw();
-
-      if (c.isEnemy)
-        DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
-                      c.radius / kandy.width * 2, RED);
-
-      if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
-          c.isEnemy) {
-        CloseWindow();
-        return 0;
-      } else if (CheckCollisionCircleRec(c.center, c.collisionRadius, square)) {
-        PlaySound(bubblePop);
-        score++;
-        c.Respawn();
+        if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
+            c.isEnemy) {
+          isGameOver = true;
+        } else if (CheckCollisionCircleRec(c.center, c.collisionRadius,
+                                           square)) {
+          PlaySound(bubblePop);
+          score++;
+          c.Respawn();
+        }
       }
     }
+
+    BeginDrawing();
+    ClearBackground(WHITE);
 
     DrawRectangleRec(square, BLACK);
 
@@ -133,6 +145,16 @@ int main() {
     DrawText(scoreText.c_str(), GetScreenWidth() - 200, 20, 32, BLACK);
 
     EndDrawing();
+
+    for (Circle &c : circles) {
+      c.Draw();
+      if (c.isEnemy)
+        DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
+                      c.radius / kandy.width * 2, RED);
+    }
+    if (isGameOver) {
+      DrawText("Game Over!", 30, GetRenderHeight() / 2 - 30, 64, BLACK);
+    }
   }
 
   UnloadSound(bubblePop);
