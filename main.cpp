@@ -1,6 +1,7 @@
 #include <cmath>
 #include <raylib.h>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 static float speed = 500.f;
@@ -84,6 +85,7 @@ int main() {
   InitAudioDevice();
   SetMasterVolume(1);
   Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
+  Sound death = LoadSound("undertale-death.wav");
   Image kandyImg = LoadImage("kandy.png");
   Texture kandy = LoadTextureFromImage(kandyImg);
 
@@ -126,6 +128,9 @@ int main() {
 
         if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
             c.isEnemy) {
+          PlaySound(death);
+          usleep(900000); // 0.9 seconds
+          BeginDrawing();
           isGameOver = true;
         } else if (CheckCollisionCircleRec(c.center, c.collisionRadius,
                                            square)) {
