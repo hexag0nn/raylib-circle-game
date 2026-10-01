@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <string>
 #include <vector>
 
 static float speed = 50;
@@ -6,6 +7,7 @@ static float speedMod = 240.0f;
 float squareSize = 20;
 static int offsetX = 0;
 static int offsetY = 0;
+static int score = 0;
 
 void sprintBoost(void) {
   if (IsKeyDown(KEY_SPACE))
@@ -71,6 +73,8 @@ int main() {
   Image kandyImg = LoadImage("kandy.png");
   Texture kandy = LoadTextureFromImage(kandyImg);
 
+  std::string scoreText = "Score: " + std::to_string(score);
+
   float centerX = ((GetScreenWidth() - squareSize) / 2.0);
   float centerY = ((GetScreenHeight() - squareSize) / 2.0);
 
@@ -118,11 +122,15 @@ int main() {
         return 0;
       } else if (CheckCollisionCircleRec(c.center, c.collisionRadius, square)) {
         PlaySound(bubblePop);
+        score++;
         c.Respawn();
       }
     }
 
     DrawRectangleRec(square, BLACK);
+
+    scoreText = "Score: " + std::to_string(score);
+    DrawText(scoreText.c_str(), GetScreenWidth() - 200, 20, 32, BLACK);
 
     EndDrawing();
   }
