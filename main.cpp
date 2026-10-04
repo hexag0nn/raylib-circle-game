@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdlib>
 #include <raylib.h>
 #include <string>
 #include <unistd.h>
@@ -75,8 +76,37 @@ public:
   }
 
   void Respawn() {
-    center.y = -GetScreenHeight() + 250;
+    center.y = -GetScreenHeight() + 250; // slightly closer to the screen border
     center.x = GetRandomValue(0, GetScreenWidth());
+  }
+
+  void MagnetizeToObject(Rectangle player, float reqDistance) {
+    float absDistance = sqrtf(pow(std::abs(center.x - player.x), 2) +
+                              pow(std::abs(center.y - player.y), 2));
+
+    float distanceX = center.x - player.x; // negative if circle is on the left,
+    float distanceY = center.y - player.y; // negative if circle is higher up.
+
+    if (absDistance <= reqDistance) {
+      if (distanceX > 0 && distanceY > 0) { // circle is in bottom right corner
+        center = {center.x - 100 * GetFrameTime(),
+                  center.y - 250 * GetFrameTime()};
+      } else if (distanceX < 0 &&
+                 distanceY < 0) { // circle is in top left corner
+        center = {center.x + 100 * GetFrameTime(),
+                  center.y + 100 * GetFrameTime()};
+      } else if (distanceX > 0 &&
+                 distanceY < 0) { // circle is in top right corner
+        center = {center.x - 100 * GetFrameTime(),
+                  center.y + 100 * GetFrameTime()};
+      } else { // circle is in bottom left corner
+        center = {center.x + 100 * GetFrameTime(),
+                  center.y - 250 * GetFrameTime()};
+      }
+      // 100 is a magic number, its here
+      // to make it so the things dont
+      // move at an abysmal speed.
+    }
   }
 };
 
@@ -114,42 +144,41 @@ int main() {
   }
 
   bool isGameOver = false;
+  float deathTime = 0;
 
   while (!WindowShouldClose()) {
     Rectangle square = {centerX + offsetX, centerY + offsetY, squareSize,
-                        squareSize};
+                        squareSize}; // in this case, he is the player that
+                                     // will be controlled.
     if (!isGameOver) {
-      WASD_movement();
 
       for (Circle &c : circles) {
-        c.Update();
-        if (c.reachedBottom())
-          c.Respawn();
 
         if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
             c.isEnemy) {
+          deathTime = GetTime();
           PlaySound(death);
-          usleep(900000); // 0.9 seconds
-          BeginDrawing();
           isGameOver = true;
+          break;
         } else if (CheckCollisionCircleRec(c.center, c.collisionRadius,
                                            square)) {
           PlaySound(bubblePop);
           score++;
           c.Respawn();
         }
+
+        if (!c.isEnemy)
+          c.MagnetizeToObject(square, 200);
+
+        c.Update();
+        if (c.reachedBottom())
+          c.Respawn();
       }
+      WASD_movement();
     }
 
     BeginDrawing();
     ClearBackground(WHITE);
-
-    DrawRectangleRec(square, BLACK);
-
-    scoreText = "Score: " + std::to_string(score);
-    DrawText(scoreText.c_str(), GetScreenWidth() - 200, 20, 32, BLACK);
-
-    EndDrawing();
 
     for (Circle &c : circles) {
       c.Draw();
@@ -157,9 +186,16 @@ int main() {
         DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
                       c.radius / kandy.width * 2, RED);
     }
-    if (isGameOver) {
+    if (isGameOver && GetTime() - deathTime >= 0.9f) {
       DrawText("Game Over!", 30, GetRenderHeight() / 2 - 30, 64, BLACK);
     }
+
+    DrawRectangleRec(square, BLACK);
+
+    scoreText = "Score: " + std::to_string(score);
+    DrawText(scoreText.c_str(), GetScreenWidth() - 200, 20, 32, BLACK);
+
+    EndDrawing();
   }
 
   UnloadSound(bubblePop);
