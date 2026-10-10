@@ -80,35 +80,34 @@ public:
     center.x = GetRandomValue(0, GetScreenWidth());
   }
 
-  void MagnetizeToObject(Rectangle player, float reqDistance) {
-    float absDistance = sqrtf(pow(std::abs(center.x - player.x), 2) +
-                              pow(std::abs(center.y - player.y), 2));
+  bool MagnetizeToObject(Vector2 target, float reqDistance, float pullSpeed) {
+    Vector2 toTarget = {target.x - center.x, target.y - center.y};
+    float absDistance =
+        sqrtf(toTarget.x * toTarget.x + toTarget.y * toTarget.y);
 
-    float distanceX = center.x - player.x; // negative if circle is on the left,
-    float distanceY = center.y - player.y; // negative if circle is higher up.
-
-    if (absDistance <= reqDistance) {
-      if (distanceX > 0 && distanceY > 0) { // circle is in bottom right corner
-        center = {center.x - 100 * GetFrameTime(),
-                  center.y - 250 * GetFrameTime()};
-      } else if (distanceX < 0 &&
-                 distanceY < 0) { // circle is in top left corner
-        center = {center.x + 100 * GetFrameTime(),
-                  center.y + 100 * GetFrameTime()};
-      } else if (distanceX > 0 &&
-                 distanceY < 0) { // circle is in top right corner
-        center = {center.x - 100 * GetFrameTime(),
-                  center.y + 100 * GetFrameTime()};
-      } else { // circle is in bottom left corner
-        center = {center.x + 100 * GetFrameTime(),
-                  center.y - 250 * GetFrameTime()};
-      }
-      // 100 is a magic number, its here
-      // to make it so the things dont
-      // move at an abysmal speed.
+    if (absDistance > 0.0f && absDistance <= reqDistance) {
+      center.x += (toTarget.x / absDistance) * pullSpeed * GetFrameTime();
+      center.y += (toTarget.y / absDistance) * pullSpeed * GetFrameTime();
+      return true;
     }
-  }
+    return false;
+  };
 };
+
+std::vector<Circle> generateCircles(int amount, float minVelocity,
+                                    float maxVelocity, int minRadius,
+                                    int maxRadius, Color color,
+                                    bool isEnemyType) {
+  std::vector<Circle> batch;
+  for (int i = 1; i <= amount; i++) {
+    float x = GetRandomValue(0, GetScreenWidth());
+    float y = -GetScreenHeight();
+    float velocity = GetRandomValue(minVelocity, maxVelocity);
+    int radius = GetRandomValue(minRadius, maxRadius);
+    batch.push_back(Circle({x, y}, radius, color, velocity, isEnemyType));
+  }
+  return batch;
+}
 
 int main() {
   InitWindow(800, 800, "raylib");
@@ -128,20 +127,27 @@ int main() {
 
   std::vector<Circle> circles;
 
-  for (int i = 1; i <= 75; i++) {
-    float x = GetRandomValue(0, GetScreenWidth());
-    float y = -GetScreenHeight();
-    float velocity = GetRandomValue(50, 300);
-    circles.push_back(Circle({x, y}, 15, PINK, velocity, false));
-  }
+  std::vector<Circle> bubbles =
+      generateCircles(75, 50, 300, 10, 10, PINK, false);
+  std::vector<Circle> enemies = generateCircles(25, 50, 400, 10, 50, RED, true);
 
-  for (int i = 1; i <= 25; i++) {
-    float x = GetRandomValue(0, GetScreenWidth());
-    float y = -GetScreenHeight() + 250;
-    float velocity = GetRandomValue(50, 400);
-    circles.push_back(
-        Circle({x, y}, GetRandomValue(10, 50), RED, velocity, true));
-  }
+  circles.insert(circles.end(), bubbles.begin(), bubbles.end());
+  circles.insert(circles.end(), enemies.begin(), enemies.end());
+
+  // for (int i = 1; i <= 75; i++) {
+  //   float x = GetRandomValue(0, GetScreenWidth());
+  //   float y = -GetScreenHeight();
+  //   float velocity = GetRandomValue(50, 300);
+  //   circles.push_back(Circle({x, y}, 10, PINK, velocity, false));
+  // }
+
+  // for (int i = 1; i <= 25; i++) {
+  //   float x = GetRandomValue(0, GetScreenWidth());
+  //   float y = -GetScreenHeight() + 250;
+  //   float velocity = GetRandomValue(50, 400);
+  //   circles.push_back(
+  //       Circle({x, y}, GetRandomValue(10, 50), RED, velocity, true));
+  // }
 
   bool isGameOver = false;
   float deathTime = 0;
@@ -167,10 +173,13 @@ int main() {
           c.Respawn();
         }
 
+        bool pulled = false;
         if (!c.isEnemy)
-          c.MagnetizeToObject(square, 200);
+          pulled = c.MagnetizeToObject(
+              {square.x + squareSize / 2, square.y + squareSize}, 100, 200);
 
-        c.Update();
+        if (!pulled)
+          c.Update();
         if (c.reachedBottom())
           c.Respawn();
       }
@@ -188,6 +197,23 @@ int main() {
     }
     if (isGameOver && GetTime() - deathTime >= 0.9f) {
       DrawText("Game Over!", 30, GetRenderHeight() / 2 - 30, 64, BLACK);
+      DrawText("Press R to restart the game.", 30, GetRenderHeight() / 2 + 30,
+               32, BLACK);
+      if (IsKeyPressed(KEY_R)) {
+        offsetX = 0;
+        offsetY = 0;
+        circles.clear();
+        std::vector<Circle> bubbles =
+            generateCircles(75, 50, 300, 10, 10, PINK, false);
+        std::vector<Circle> enemies =
+            generateCircles(25, 50, 400, 10, 50, RED, true);
+
+        circles.insert(circles.end(), bubbles.begin(), bubbles.end());
+        circles.insert(circles.end(), enemies.begin(), enemies.end());
+
+        score = 0;
+        isGameOver = false;
+      }
     }
 
     DrawRectangleRec(square, BLACK);
