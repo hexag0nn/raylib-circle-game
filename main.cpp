@@ -50,6 +50,7 @@ void WASD_movement(void) {
 
 class Circle {
 public:
+  float spawnTime;
   Vector2 center;
   float radius;
   float collisionRadius;
@@ -58,7 +59,8 @@ public:
   bool isEnemy;
 
   Circle(Vector2 pos, float r, Color c, float vel, bool enemy)
-      : center(pos), radius(r), color(c), velocity(vel), isEnemy(enemy) {
+      : center(pos), radius(r), color(c), velocity(vel), isEnemy(enemy),
+        spawnTime(GetTime()) {
 
     if (isEnemy) {
       collisionRadius = r - 10.f;
@@ -78,6 +80,7 @@ public:
   void Respawn() {
     center.y = -GetScreenHeight() + 250; // slightly closer to the screen border
     center.x = GetRandomValue(0, GetScreenWidth());
+    spawnTime = GetTime();
   }
 
   bool MagnetizeToObject(Vector2 target, float reqDistance, float pullSpeed) {
@@ -112,7 +115,7 @@ std::vector<Circle> generateCircles(int amount, float minVelocity,
 int main() {
   InitWindow(800, 800, "raylib");
   InitAudioDevice();
-  SetMasterVolume(1);
+  SetMasterVolume(0.5f);
   Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
   Sound death = LoadSound("undertale-death.wav");
   Image kandyImg = LoadImage("kandy.png");
@@ -130,9 +133,11 @@ int main() {
   std::vector<Circle> bubbles =
       generateCircles(75, 50, 300, 10, 10, PINK, false);
   std::vector<Circle> enemies = generateCircles(25, 50, 400, 10, 50, RED, true);
+  std::vector<Circle> flies = generateCircles(100, 10, 60, 5, 5, GREEN, true);
 
   circles.insert(circles.end(), bubbles.begin(), bubbles.end());
   circles.insert(circles.end(), enemies.begin(), enemies.end());
+  circles.insert(circles.end(), flies.begin(), flies.end());
 
   // for (int i = 1; i <= 75; i++) {
   //   float x = GetRandomValue(0, GetScreenWidth());
@@ -151,8 +156,11 @@ int main() {
 
   bool isGameOver = false;
   float deathTime = 0;
+  float lastTime = 0;
+  float currentTime = 0;
 
   while (!WindowShouldClose()) {
+    currentTime = GetTime();
     Rectangle square = {centerX + offsetX, centerY + offsetY, squareSize,
                         squareSize}; // in this case, he is the player that
                                      // will be controlled.
@@ -176,7 +184,16 @@ int main() {
         bool pulled = false;
         if (!c.isEnemy)
           pulled = c.MagnetizeToObject(
-              {square.x + squareSize / 2, square.y + squareSize}, 100, 200);
+              {square.x + squareSize / 2, square.y + squareSize / 2}, 100, 200);
+
+        if (c.isEnemy && c.radius <= 5)
+          pulled = c.MagnetizeToObject(
+              {square.x + squareSize / 2, square.y + squareSize / 2}, 1000,
+              GetRandomValue(10, 270));
+
+        if (currentTime - c.spawnTime >= 30.f && c.isEnemy && c.radius <= 5) {
+          c.Respawn();
+        }
 
         if (!pulled)
           c.Update();
@@ -191,7 +208,7 @@ int main() {
 
     for (Circle &c : circles) {
       c.Draw();
-      if (c.isEnemy)
+      if (c.isEnemy && c.radius > 5)
         DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
                       c.radius / kandy.width * 2, RED);
     }
@@ -207,9 +224,12 @@ int main() {
             generateCircles(75, 50, 300, 10, 10, PINK, false);
         std::vector<Circle> enemies =
             generateCircles(25, 50, 400, 10, 50, RED, true);
+        std::vector<Circle> flies =
+            generateCircles(100, 10, 60, 5, 5, GREEN, true);
 
         circles.insert(circles.end(), bubbles.begin(), bubbles.end());
         circles.insert(circles.end(), enemies.begin(), enemies.end());
+        circles.insert(circles.end(), flies.begin(), flies.end());
 
         score = 0;
         isGameOver = false;
