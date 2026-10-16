@@ -1,5 +1,4 @@
 #include <cmath>
-#include <cstdlib>
 #include <raylib.h>
 #include <string>
 #include <unistd.h>
@@ -97,6 +96,7 @@ public:
   };
 };
 
+// function for making circles
 std::vector<Circle> generateCircles(int amount, float minVelocity,
                                     float maxVelocity, int minRadius,
                                     int maxRadius, Color color,
@@ -118,6 +118,8 @@ int main() {
   SetMasterVolume(0.5f);
   Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
   Sound death = LoadSound("undertale-death.wav");
+  Sound explosion = LoadSound("roblox-explosion-sound.wav");
+  SetSoundVolume(explosion, 0.6);
   Image kandyImg = LoadImage("kandy.png");
   Texture kandy = LoadTextureFromImage(kandyImg);
 
@@ -192,6 +194,7 @@ int main() {
               GetRandomValue(10, 270));
 
         if (currentTime - c.spawnTime >= 30.f && c.isEnemy && c.radius <= 5) {
+          PlaySound(explosion);
           c.Respawn();
         }
 
@@ -245,6 +248,8 @@ int main() {
   }
 
   UnloadSound(bubblePop);
+  UnloadSound(death);
+  UnloadSound(explosion);
   UnloadImage(kandyImg);
   UnloadTexture(kandy);
   CloseAudioDevice();
