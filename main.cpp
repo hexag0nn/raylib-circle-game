@@ -4,48 +4,70 @@
 #include <unistd.h>
 #include <vector>
 
-static float speed = 500.f;
-// static float speedMod = 2.0f;
-float squareSize = 20;
-static float offsetX = 0;
-static float offsetY = 0;
 static int score = 0;
+static constexpr int g_windowRezX = 800;
+static constexpr int g_windowRezY = 800;
 
-void sprintBoost(void) {
-  if (IsKeyDown(KEY_SPACE))
-    speed = 750.f;
-  if (IsKeyUp(KEY_SPACE))
-    speed = 500.f;
-}
+struct Player {
+  Rectangle rect;
+  float speed = 500.f;
+  static constexpr float NORMAL = 500.f;
+  static constexpr float SPRINT = 750.f;
+  float size = 20.f;
 
-void WASD_movement(void) {
-  sprintBoost();
+  Player() { Reset(); }
 
-  float moveX = 0.f;
-  float moveY = 0.f;
+  void Reset() {
+    rect = {(GetScreenHeight() - size) / 2.f, (GetScreenWidth() - size) / 2.f,
+            size, size};
+    speed = NORMAL;
+  };
 
-  if (IsKeyDown(KEY_W))
-    moveY -= 1.0f;
+  Rectangle GetRect() const { return rect; };
 
-  if (IsKeyDown(KEY_A))
-    moveX -= 1.0f;
+  void WASD_movement() {
+    speed = IsKeyDown(KEY_SPACE) ? SPRINT : NORMAL;
 
-  if (IsKeyDown(KEY_S))
-    moveY += 1.0f;
+    float moveX = 0.f;
+    float moveY = 0.f;
 
-  if (IsKeyDown(KEY_D))
-    moveX += 1.0f;
+    if (IsKeyDown(KEY_W))
+      moveY -= 1.0f;
 
-  float length = sqrtf(pow(moveX, 2) + pow(moveY, 2));
+    if (IsKeyDown(KEY_A))
+      moveX -= 1.0f;
 
-  if (length > 1.0f) {
-    moveX /= length;
-    moveY /= length;
+    if (IsKeyDown(KEY_S))
+      moveY += 1.0f;
+
+    if (IsKeyDown(KEY_D))
+      moveX += 1.0f;
+
+    float length = sqrtf(pow(moveX, 2) + pow(moveY, 2));
+
+    if (length > 1.0f) {
+      moveX /= length;
+      moveY /= length;
+    }
+
+    if (rect.x + moveX * speed * GetFrameTime() >= g_windowRezX + size / 2) {
+      rect.x = 10;
+      rect.x += moveX * speed * GetFrameTime();
+    } else if (rect.x + moveX * speed * GetFrameTime() <= 0 - size / 2) {
+      rect.x = g_windowRezX - size / 2;
+      rect.x += moveX * speed * GetFrameTime();
+    } else
+      rect.x += moveX * speed * GetFrameTime();
+
+    // doesnt allow the player to go out of bounds on the Y coordinate
+    if (rect.y + moveY * speed * GetFrameTime() >= g_windowRezY - size) {
+      rect.y = g_windowRezY - size;
+    } else if (rect.y + moveY * speed * GetFrameTime() <= 0) {
+      rect.y = 0;
+    } else
+      rect.y += moveY * speed * GetFrameTime();
   }
-
-  offsetX += moveX * speed * GetFrameTime();
-  offsetY += moveY * speed * GetFrameTime();
-}
+};
 
 class Circle {
 public:
@@ -112,25 +134,8 @@ std::vector<Circle> generateCircles(int amount, float minVelocity,
   return batch;
 }
 
-int main() {
-  InitWindow(800, 800, "raylib");
-  InitAudioDevice();
-  SetMasterVolume(0.5f);
-  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
-  Sound death = LoadSound("undertale-death.wav");
-  Sound explosion = LoadSound("roblox-explosion-sound.wav");
-  SetSoundVolume(explosion, 0.6);
-  Image kandyImg = LoadImage("kandy.png");
-  Texture kandy = LoadTextureFromImage(kandyImg);
-
-  std::string scoreText = "Score: " + std::to_string(score);
-
-  float centerX = ((GetScreenWidth() - squareSize) / 2.0);
-  float centerY = ((GetScreenHeight() - squareSize) / 2.0);
-
-  SetTargetFPS(60);
-
-  std::vector<Circle> circles;
+void initializeAllCircles(std::vector<Circle> &circles) {
+  circles.clear();
 
   std::vector<Circle> bubbles =
       generateCircles(75, 50, 300, 10, 10, PINK, false);
@@ -140,34 +145,48 @@ int main() {
   circles.insert(circles.end(), bubbles.begin(), bubbles.end());
   circles.insert(circles.end(), enemies.begin(), enemies.end());
   circles.insert(circles.end(), flies.begin(), flies.end());
+}
 
-  // for (int i = 1; i <= 75; i++) {
-  //   float x = GetRandomValue(0, GetScreenWidth());
-  //   float y = -GetScreenHeight();
-  //   float velocity = GetRandomValue(50, 300);
-  //   circles.push_back(Circle({x, y}, 10, PINK, velocity, false));
-  // }
+int main() {
+  InitWindow(g_windowRezX, g_windowRezY, "raylib");
 
-  // for (int i = 1; i <= 25; i++) {
-  //   float x = GetRandomValue(0, GetScreenWidth());
-  //   float y = -GetScreenHeight() + 250;
-  //   float velocity = GetRandomValue(50, 400);
-  //   circles.push_back(
-  //       Circle({x, y}, GetRandomValue(10, 50), RED, velocity, true));
-  // }
+  // loading in assets
+  InitAudioDevice();
+  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
+  Sound death = LoadSound("undertale-death.wav");
+  Sound explosion = LoadSound("roblox-explosion-sound.wav");
+  SetSoundVolume(explosion, 0.6);
+  SetMasterVolume(0.5f);
+  Image kandyImg = LoadImage("kandy.png");
+  Texture kandy = LoadTextureFromImage(kandyImg);
 
+  Player player;
+  player.Reset();
+
+  std::string scoreText = "Score: " + std::to_string(score);
+
+  // initializing all the circles in a vector array called circles
+  std::vector<Circle> circles;
+  initializeAllCircles(circles);
+
+  // other settings to have before the main game loop
   bool isGameOver = false;
   float deathTime = 0;
-  float lastTime = 0;
   float currentTime = 0;
+
+  HideCursor();
+  SetTargetFPS(60);
 
   while (!WindowShouldClose()) {
     currentTime = GetTime();
-    Rectangle square = {centerX + offsetX, centerY + offsetY, squareSize,
-                        squareSize}; // in this case, he is the player that
-                                     // will be controlled.
+
+    Rectangle square = player.GetRect(); // needed for drawing the rectangle
+                                         // (player) at the end of the game loop
+
+    // game loop to run if player is not dead
     if (!isGameOver) {
 
+      player.WASD_movement();
       for (Circle &c : circles) {
 
         if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
@@ -186,11 +205,12 @@ int main() {
         bool pulled = false;
         if (!c.isEnemy)
           pulled = c.MagnetizeToObject(
-              {square.x + squareSize / 2, square.y + squareSize / 2}, 100, 200);
+              {square.x + player.size / 2, square.y + player.size / 2}, 100,
+              200);
 
         if (c.isEnemy && c.radius <= 5)
           pulled = c.MagnetizeToObject(
-              {square.x + squareSize / 2, square.y + squareSize / 2}, 1000,
+              {square.x + player.size / 2, square.y + player.size / 2}, 1000,
               GetRandomValue(10, 270));
 
         if (currentTime - c.spawnTime >= 30.f && c.isEnemy && c.radius <= 5) {
@@ -203,12 +223,13 @@ int main() {
         if (c.reachedBottom())
           c.Respawn();
       }
-      WASD_movement();
     }
 
     BeginDrawing();
     ClearBackground(WHITE);
 
+    // extra logic that will be run on each turn, regardless if player is dead
+    // or not
     for (Circle &c : circles) {
       c.Draw();
       if (c.isEnemy && c.radius > 5)
@@ -220,20 +241,9 @@ int main() {
       DrawText("Press R to restart the game.", 30, GetRenderHeight() / 2 + 30,
                32, BLACK);
       if (IsKeyPressed(KEY_R)) {
-        offsetX = 0;
-        offsetY = 0;
-        circles.clear();
-        std::vector<Circle> bubbles =
-            generateCircles(75, 50, 300, 10, 10, PINK, false);
-        std::vector<Circle> enemies =
-            generateCircles(25, 50, 400, 10, 50, RED, true);
-        std::vector<Circle> flies =
-            generateCircles(100, 10, 60, 5, 5, GREEN, true);
+        player.Reset();
 
-        circles.insert(circles.end(), bubbles.begin(), bubbles.end());
-        circles.insert(circles.end(), enemies.begin(), enemies.end());
-        circles.insert(circles.end(), flies.begin(), flies.end());
-
+        initializeAllCircles(circles);
         score = 0;
         isGameOver = false;
       }
