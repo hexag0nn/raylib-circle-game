@@ -8,6 +8,8 @@ static int score = 0;
 static constexpr int g_windowRezX = 800;
 static constexpr int g_windowRezY = 800;
 
+enum class circleType { BUBBLE, ENEMY, FLY };
+
 struct Player {
   Rectangle rect;
   float speed = 500.f;
@@ -53,7 +55,7 @@ struct Player {
     if (rect.x + moveX * speed * GetFrameTime() >= g_windowRezX + size / 2) {
       rect.x = 10;
       rect.x += moveX * speed * GetFrameTime();
-    } else if (rect.x + moveX * speed * GetFrameTime() <= 0 - size / 2) {
+    } else if (rect.x + moveX * speed * GetFrameTime() <= -size / 2) {
       rect.x = g_windowRezX - size / 2;
       rect.x += moveX * speed * GetFrameTime();
     } else
@@ -78,12 +80,13 @@ public:
   Color color;
   float velocity;
   bool isEnemy;
+  circleType type;
 
-  Circle(Vector2 pos, float r, Color c, float vel, bool enemy)
-      : center(pos), radius(r), color(c), velocity(vel), isEnemy(enemy),
+  Circle(Vector2 pos, float r, Color c, float vel, circleType t)
+      : center(pos), radius(r), color(c), velocity(vel), type(t),
         spawnTime(GetTime()) {
 
-    if (isEnemy) {
+    if (type == circleType::ENEMY) {
       collisionRadius = r - 10.f;
     } else {
       collisionRadius = r;
@@ -116,31 +119,41 @@ public:
     }
     return false;
   };
+
+  bool isThreatening() {
+    if (type == circleType::ENEMY || type == circleType::FLY)
+      return true;
+    else
+      return false;
+  }
 };
 
 // function for making circles
 std::vector<Circle> generateCircles(int amount, float minVelocity,
                                     float maxVelocity, int minRadius,
                                     int maxRadius, Color color,
-                                    bool isEnemyType) {
+                                    circleType type) {
   std::vector<Circle> batch;
   for (int i = 1; i <= amount; i++) {
     float x = GetRandomValue(0, GetScreenWidth());
     float y = -GetScreenHeight();
     float velocity = GetRandomValue(minVelocity, maxVelocity);
     int radius = GetRandomValue(minRadius, maxRadius);
-    batch.push_back(Circle({x, y}, radius, color, velocity, isEnemyType));
+    batch.push_back(Circle({x, y}, radius, color, velocity, type));
   }
   return batch;
 }
 
+// big chunky function to put all circle types in one big array
 void initializeAllCircles(std::vector<Circle> &circles) {
   circles.clear();
 
   std::vector<Circle> bubbles =
-      generateCircles(75, 50, 300, 10, 10, PINK, false);
-  std::vector<Circle> enemies = generateCircles(25, 50, 400, 10, 50, RED, true);
-  std::vector<Circle> flies = generateCircles(100, 10, 60, 5, 5, GREEN, true);
+      generateCircles(75, 50, 300, 10, 10, PINK, circleType::BUBBLE);
+  std::vector<Circle> enemies =
+      generateCircles(25, 50, 400, 10, 50, RED, circleType::ENEMY);
+  std::vector<Circle> flies =
+      generateCircles(100, 10, 60, 5, 5, GREEN, circleType::FLY);
 
   circles.insert(circles.end(), bubbles.begin(), bubbles.end());
   circles.insert(circles.end(), enemies.begin(), enemies.end());
@@ -190,30 +203,32 @@ int main() {
       for (Circle &c : circles) {
 
         if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
-            c.isEnemy) {
+            c.isThreatening()) {
           deathTime = GetTime();
           PlaySound(death);
           isGameOver = true;
           break;
         } else if (CheckCollisionCircleRec(c.center, c.collisionRadius,
-                                           square)) {
+                                           square) &&
+                   !c.isThreatening()) {
           PlaySound(bubblePop);
           score++;
           c.Respawn();
         }
 
         bool pulled = false;
-        if (!c.isEnemy)
+        if (!c.isThreatening())
           pulled = c.MagnetizeToObject(
               {square.x + player.size / 2, square.y + player.size / 2}, 100,
               200);
 
-        if (c.isEnemy && c.radius <= 5)
+        if (c.type == circleType::FLY)
           pulled = c.MagnetizeToObject(
-              {square.x + player.size / 2, square.y + player.size / 2}, 1000,
+              {square.x + player.size / 2, square.y + player.size / 2},
+              1000, // magnetizes the FLY enemy type
               GetRandomValue(10, 270));
 
-        if (currentTime - c.spawnTime >= 30.f && c.isEnemy && c.radius <= 5) {
+        if (currentTime - c.spawnTime >= 30.f && c.type == circleType::FLY) {
           PlaySound(explosion);
           c.Respawn();
         }
@@ -232,7 +247,7 @@ int main() {
     // or not
     for (Circle &c : circles) {
       c.Draw();
-      if (c.isEnemy && c.radius > 5)
+      if (c.type == circleType::ENEMY)
         DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
                       c.radius / kandy.width * 2, RED);
     }
