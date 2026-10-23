@@ -177,7 +177,7 @@ int main() {
   Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
   Sound death = LoadSound("undertale-death.wav");
   Sound explosion = LoadSound("roblox-explosion-sound.wav");
-  SetSoundVolume(explosion, 0.6);
+  SetSoundVolume(explosion, 0.4);
   SetMasterVolume(0.5f);
   Image kandyImg = LoadImage("kandy.png");
   Texture kandy = LoadTextureFromImage(kandyImg);
@@ -283,6 +283,7 @@ int main() {
                       c.radius / kandy.width * 2, RED);
     }
     if (isGameOver && GetTime() - deathTime >= 0.9f) {
+      DrawRectangleRec({15, g_windowRezY / 2.f - 34, 500, 100}, MAROON);
       DrawText("Game Over!", 30, GetRenderHeight() / 2 - 30, 64, BLACK);
       DrawText("Press R to restart the game.", 30, GetRenderHeight() / 2 + 30,
                32, BLACK);
