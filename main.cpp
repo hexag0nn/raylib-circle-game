@@ -8,7 +8,7 @@ static int score = 0;
 static constexpr int g_windowRezX = 800;
 static constexpr int g_windowRezY = 800;
 
-enum class circleType { BUBBLE, ENEMY, FLY };
+enum class circleType { BUBBLE, ENEMY, FLY, CHUNGUS };
 
 struct Player {
   Rectangle rect;
@@ -52,10 +52,10 @@ struct Player {
       moveY /= length;
     }
 
-    if (rect.x + moveX * speed * GetFrameTime() >= g_windowRezX + size / 2) {
-      rect.x = 10;
+    if (rect.x + moveX * speed * GetFrameTime() >= g_windowRezX) {
+      rect.x = size / 2;
       rect.x += moveX * speed * GetFrameTime();
-    } else if (rect.x + moveX * speed * GetFrameTime() <= -size / 2) {
+    } else if (rect.x + moveX * speed * GetFrameTime() <= -size) {
       rect.x = g_windowRezX - size / 2;
       rect.x += moveX * speed * GetFrameTime();
     } else
@@ -160,6 +160,15 @@ void initializeAllCircles(std::vector<Circle> &circles) {
   circles.insert(circles.end(), flies.begin(), flies.end());
 }
 
+void initChungusCircles(std::vector<Circle> &circles) {
+  circles.clear();
+
+  std::vector<Circle> chungus =
+      generateCircles(1, 450, 500, 30, 45, DARKGRAY, circleType::CHUNGUS);
+
+  circles.insert(circles.end(), chungus.begin(), chungus.end());
+}
+
 int main() {
   InitWindow(g_windowRezX, g_windowRezY, "raylib");
 
@@ -180,7 +189,9 @@ int main() {
 
   // initializing all the circles in a vector array called circles
   std::vector<Circle> circles;
+  std::vector<Circle> chungusCircles;
   initializeAllCircles(circles);
+  initChungusCircles(chungusCircles);
 
   // other settings to have before the main game loop
   bool isGameOver = false;
@@ -200,6 +211,21 @@ int main() {
     if (!isGameOver) {
 
       player.WASD_movement();
+
+      for (Circle &chungus : chungusCircles) {
+        for (Circle &c : circles) {
+          if (CheckCollisionCircles(chungus.center, chungus.radius, c.center,
+                                    c.radius)) {
+            c.Respawn();
+          }
+        }
+        chungus.Update();
+
+        if (score >= 50 && chungus.center.y > g_windowRezY + chungus.radius) {
+          chungus.Respawn();
+        }
+      }
+
       for (Circle &c : circles) {
 
         if (CheckCollisionCircleRec(c.center, c.collisionRadius, square) &&
@@ -245,6 +271,11 @@ int main() {
 
     // extra logic that will be run on each turn, regardless if player is dead
     // or not
+
+    for (Circle &chungus : chungusCircles) {
+      chungus.Draw();
+    }
+
     for (Circle &c : circles) {
       c.Draw();
       if (c.type == circleType::ENEMY)
@@ -259,6 +290,7 @@ int main() {
         player.Reset();
 
         initializeAllCircles(circles);
+        initChungusCircles(chungusCircles);
         score = 0;
         isGameOver = false;
       }
