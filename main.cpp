@@ -170,11 +170,11 @@ void initChungusCircles(std::vector<Circle> &circles) {
 
 void launchMainGame() {
   InitAudioDevice();
-  Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
-  Sound death = LoadSound("undertale-death.wav");
-  Sound explosion = LoadSound("roblox-explosion-sound.wav");
-  SetSoundVolume(explosion, 0.4);
-  SetMasterVolume(0.5f);
+  Sound bubblePop = LoadSound("pop.wav");
+  Sound death = LoadSound("death.wav");
+  Sound explosion = LoadSound("explosion.wav");
+  SetSoundVolume(explosion, 0.2);
+  SetMasterVolume(1);
   Image sonImg = LoadImage("son.png");
   Texture son = LoadTextureFromImage(sonImg);
 
