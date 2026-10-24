@@ -175,8 +175,8 @@ void launchMainGame() {
   Sound explosion = LoadSound("roblox-explosion-sound.wav");
   SetSoundVolume(explosion, 0.4);
   SetMasterVolume(0.5f);
-  Image kandyImg = LoadImage("kandy.png");
-  Texture kandy = LoadTextureFromImage(kandyImg);
+  Image sonImg = LoadImage("son.png");
+  Texture son = LoadTextureFromImage(sonImg);
 
   Player player;
   player.Reset();
@@ -275,8 +275,8 @@ void launchMainGame() {
     for (Circle &c : circles) {
       c.Draw();
       if (c.type == circleType::ENEMY)
-        DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
-                      c.radius / kandy.width * 2, RED);
+        DrawTextureEx(son, {c.center.x - c.radius, c.center.y - c.radius}, 0,
+                      c.radius / son.width * 2, RED);
     }
 
     DrawRectangleRec(square, BLACK);
@@ -304,8 +304,8 @@ void launchMainGame() {
   UnloadSound(bubblePop);
   UnloadSound(death);
   UnloadSound(explosion);
-  UnloadImage(kandyImg);
-  UnloadTexture(kandy);
+  UnloadImage(sonImg);
+  UnloadTexture(son);
   CloseAudioDevice();
 }
 
@@ -363,8 +363,10 @@ void launchMainMenu() {
 }
 
 int main() {
-  InitWindow(g_windowRezX, g_windowRezY, "raylib");
+  InitWindow(g_windowRezX, g_windowRezY, "raylib game");
 
+  // this whole launching the game mechanism is stupid, i need to make a better
+  // one
   launchMainMenu();
   CloseWindow();
   return 0;
