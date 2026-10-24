@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <vector>
 
-static int score = 0;
 static constexpr int g_windowRezX = 800;
 static constexpr int g_windowRezY = 800;
 
@@ -169,10 +168,7 @@ void initChungusCircles(std::vector<Circle> &circles) {
   circles.insert(circles.end(), chungus.begin(), chungus.end());
 }
 
-int main() {
-  InitWindow(g_windowRezX, g_windowRezY, "raylib");
-
-  // loading in assets
+void launchMainGame() {
   InitAudioDevice();
   Sound bubblePop = LoadSound("universfield-bubble-pop-06-351337.wav");
   Sound death = LoadSound("undertale-death.wav");
@@ -185,8 +181,6 @@ int main() {
   Player player;
   player.Reset();
 
-  std::string scoreText = "Score: " + std::to_string(score);
-
   // initializing all the circles in a vector array called circles
   std::vector<Circle> circles;
   std::vector<Circle> chungusCircles;
@@ -197,6 +191,8 @@ int main() {
   bool isGameOver = false;
   float deathTime = 0;
   float currentTime = 0;
+  int score = 0;
+  std::string scoreText = "Score: " + std::to_string(score);
 
   HideCursor();
   SetTargetFPS(60);
@@ -282,11 +278,14 @@ int main() {
         DrawTextureEx(kandy, {c.center.x - c.radius, c.center.y - c.radius}, 0,
                       c.radius / kandy.width * 2, RED);
     }
+
+    DrawRectangleRec(square, BLACK);
+
     if (isGameOver && GetTime() - deathTime >= 0.9f) {
-      DrawRectangleRec({15, g_windowRezY / 2.f - 34, 500, 100}, MAROON);
+      DrawRectangleRec({15, g_windowRezY / 2.f - 36, 550, 135}, MAROON);
       DrawText("Game Over!", 30, GetRenderHeight() / 2 - 30, 64, BLACK);
-      DrawText("Press R to restart the game.", 30, GetRenderHeight() / 2 + 30,
-               32, BLACK);
+      DrawText("Press R to restart the game or\nESCAPE to go to the main menu.",
+               30, GetRenderHeight() / 2 + 30, 32, BLACK);
       if (IsKeyPressed(KEY_R)) {
         player.Reset();
 
@@ -296,9 +295,6 @@ int main() {
         isGameOver = false;
       }
     }
-
-    DrawRectangleRec(square, BLACK);
-
     scoreText = "Score: " + std::to_string(score);
     DrawText(scoreText.c_str(), GetScreenWidth() - 200, 20, 32, BLACK);
 
@@ -311,6 +307,65 @@ int main() {
   UnloadImage(kandyImg);
   UnloadTexture(kandy);
   CloseAudioDevice();
+}
+
+void launchMainMenu() {
+  bool clickable = false;
+  while (!WindowShouldClose()) {
+    BeginDrawing();
+    ClearBackground(WHITE);
+    Vector2 textMeasures =
+        MeasureTextEx(GetFontDefault(), "Video Game", 114, 16);
+    DrawText("Press ESCAPE to exit the game.", 10, g_windowRezY - 20, 20,
+             BLACK);
+    DrawTextEx(GetFontDefault(), "Video game",
+               {g_windowRezX / 2.f - textMeasures.x / 2.f,
+                g_windowRezY / 2.f - textMeasures.y},
+               114, 16, BLACK);
+
+    Vector2 rectanglePos = {g_windowRezX / 2.f - 300 / 2.f,
+                            g_windowRezY / 2.f + 100 / 2.f};
+
+    DrawRectangleRec({g_windowRezX / 2.f - 300 / 2.f,
+                      g_windowRezY / 2.f + 100 / 2.f, 300, 100},
+                     BLACK);
+    DrawTextEx(GetFontDefault(), "Play",
+               {g_windowRezX / 2.f - 75.f, g_windowRezY / 2.f + 75}, 48, 16,
+               WHITE);
+
+    // stupid function to check if mouse is in button area, need to make a
+    // better solution
+    if (GetMousePosition().x >= rectanglePos.x &&
+        GetMousePosition().y >= rectanglePos.y &&
+        GetMousePosition().x <= rectanglePos.x + 300 &&
+        GetMousePosition().y <= rectanglePos.y + 100)
+      clickable = true;
+    else
+      clickable = false;
+
+    if (!clickable)
+      SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+
+    if (clickable) {
+      SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+      if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        launchMainGame();
+        ShowCursor();
+      }
+    }
+
+    if (IsKeyPressed(KEY_SPACE)) {
+      launchMainGame();
+      ShowCursor();
+    }
+    EndDrawing();
+  }
+}
+
+int main() {
+  InitWindow(g_windowRezX, g_windowRezY, "raylib");
+
+  launchMainMenu();
   CloseWindow();
   return 0;
 }
